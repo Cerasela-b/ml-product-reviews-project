@@ -1,0 +1,41 @@
+import click
+import joblib
+import pandas as pd
+import os
+import sys
+
+MODEL_PATH = "model/sentiment_model.pkl"
+
+def load_model(path=MODEL_PATH):
+    if not os.path.exists(path):
+        click.echo(f"Error: model not found at {path}. Please download or place the model file there.")
+        sys.exit(1)
+    return joblib.load(path)
+
+@click.command()
+@click.option("--title", prompt="Review title", help="Title of the product review.")
+@click.option("--text", prompt="Review text", help="Full text of the product review.")
+def predict_sentiment(title, text):
+    """CLI tool for predicting review sentiment."""
+    model = load_model()
+    title = title.strip()
+    text = text.strip()
+    review_length = len(text)
+    user_input = pd.DataFrame([{
+        "review_title": title,
+        "review_text": text,
+        "review_length": review_length
+    }])
+    prediction = model.predict(user_input)[0]
+    # show probability if available
+    proba_str = ""
+    if hasattr(model.named_steps.get("classifier", model), "predict_proba"):
+        try:
+            proba = model.predict_proba(user_input).max()
+            proba_str = f" (confidence: {proba:.2f})"
+        except Exception:
+            proba_str = ""
+    click.echo(f"\n Predicted sentiment: {prediction}{proba_str}")
+
+if __name__ == "__main__":
+    predict_sentiment()
